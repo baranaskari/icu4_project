@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Recipe Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      padding: 2rem;
+      max-width: 900px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .input-container {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      font-size: 1rem;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      background: #007acc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .recipe-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    .recipe-card {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    img {
+      width: 100%;
+      border-radius: 10px;
+      object-fit: cover;
+    }
+    h3 {
+      margin-top: 0.5rem;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    .favorite-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 1.5rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    .saved {
+      color: red;
+    }
+    a.fav-link {
+      display: inline-block;
+      margin-top: 1rem;
+      text-align: center;
+      width: 100%;
+      font-size: 1rem;
+      color: #007acc;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Recipe Generator</h1>
+
+  <div class="input-container">
+    <input id="ingredients" type="text" placeholder="e.g. chicken, rice, onion" />
+    <button onclick="getRecipes()">Search</button>
+  </div>
+
+  <div id="results" class="recipe-list"></div>
+
+  <a class="fav-link" href="/favorites">View Your Saved Recipes →</a>
+
+  <script>
+    async function getRecipes() {
+      const ingredients = document.getElementById("ingredients").value.trim();
+      if (!ingredients) {
+        alert("Please enter some ingredients.");
+        return;
+      }
+
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "<p>Loading...</p>";
+
+      try {
+        const res = await fetch("/recipes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ingredients })
+        });
+
+        const data = await res.json();
+        resultsDiv.innerHTML = "";
+
+        if (!Array.isArray(data) || data.length === 0) {
+          resultsDiv.innerHTML = "<p>No recipes found.</p>";
+          return;
+        }
+
+        for (const recipe of data) {
+          const card = document.createElement("div");
+          card.className = "recipe-card";
+
+          const ingredientsList = recipe.extendedIngredients
+            .map(i => `<li>${i.original}</li>`)
+            .join("");
+
+          const instructions = recipe.instructions?.replace(/<[^>]+>/g, '') || "No instructions provided.";
+
+          card.innerHTML = `
+            <img src="${recipe.image}" alt="${recipe.title}">
+            <h3>${recipe.title}</h3>
+            <h4>Ingredients:</h4>
+            <ul>${ingredientsList}</ul>
+            <h4>Instructions:</h4>
+            <p>${instructions}</p>
+            <button class="favorite-btn" title="Save to favorites">🤍</button>
+          `;
+
+          const favBtn = card.querySelector(".favorite-btn");
+          favBtn.onclick = () => saveFavorite(recipe, favBtn);
+
+          resultsDiv.appendChild(card);
+        }
+      } catch (err) {
+        console.error("Error fetching recipes:", err);
+        resultsDiv.innerHTML = "<p>Error fetching recipes. Try again.</p>";
+      }
+    }
+
+    async function saveFavorite(recipe, button) {
+      try {
+        const res = await fetch("/api/favorites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(recipe)
+        });
+
+        if (res.status === 201) {
+          button.classList.add("saved");
+          button.textContent = "❤️";
+          button.title = "Saved";
+        } else if (res.status === 409) {
+          alert("This recipe is already saved.");
+        } else {
+          alert("Failed to save favorite.");
+        }
+      } catch (err) {
+        console.error("Save error:", err);
+      }
+    }
+  </script>
+</body>
+</html>
