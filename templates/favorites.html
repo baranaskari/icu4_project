@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Saved Recipes</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f4f4f4;
+      max-width: 900px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .recipe-card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    img {
+      max-width: 100%;
+      border-radius: 10px;
+    }
+    h2 {
+      margin-top: 0.5rem;
+    }
+    ul {
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Your Favorite Recipes</h1>
+  <div id="favorites"></div>
+
+  <script>
+    async function loadFavorites() {
+      const res = await fetch("/api/favorites");
+      const data = await res.json();
+      const container = document.getElementById("favorites");
+
+      if (data.length === 0) {
+        container.innerHTML = "<p>No favorites yet. Go back and add some!</p>";
+        return;
+      }
+
+      data.forEach(recipe => {
+        const card = document.createElement("div");
+        card.className = "recipe-card";
+
+        const ingredients = recipe.extendedIngredients
+          .map(i => `<li>${i.original}</li>`)
+          .join("");
+
+        card.innerHTML = `
+          <img src="${recipe.image}" alt="${recipe.title}">
+          <h2>${recipe.title}</h2>
+          <h4>Ingredients</h4>
+          <ul>${ingredients}</ul>
+          <h4>Instructions</h4>
+          <p>${recipe.instructions}</p>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    loadFavorites();
+  </script>
+</body>
+</html>
